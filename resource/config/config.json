@@ -1,0 +1,10 @@
+{
+  "Facilities": {
+    "HttpServer": true,
+    "JsonWs": true,
+    "RuntimeCtl": true
+  },
+  "ApplicationLogger":{
+    "GlobalLogLevel": "INFO"
+  }
+}
