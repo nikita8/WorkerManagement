@@ -9,9 +9,18 @@
     "GlobalLogLevel": "INFO"
   },
   "createWorkerRules": [
-    ["Email",  "STR",  "REQ"]
+    ["FirstName",  "STR",  "REQ:FIRST_NAME_MISSING", "LEN:1-50:NAME_BAD_LENGTH", "TRIM"],
+    ["LastName",  "STR",  "REQ:LAST_NAME_MISSING", "LEN:1-50:NAME_BAD_LENGTH", "TRIM"],
+    ["Email",  "STR",  "REQ:EMAIL_MISSING", "REG:^[_A-Za-z0-9-\\+]+(\\.[_A-Za-z0-9-]+)*@[A-Za-z0-9-]+(\\.[A-Za-z0-9]+)*(\\.[A-Za-z]{2,})$:EMAIL_BAD_CONTENT"],
+    ["Address",  "STR",  "REQ:ADDRESS_MISSING"]
   ],
   "serviceErrors": [
-    ["C", "INVALID_EMAIL", "Email is not a valid string."]
+    ["C", "EMAIL_MISSING", "Email is missing"],
+    ["C", "FIRST_NAME_MISSING", "FirstName is missing."],
+    ["C", "LAST_NAME_MISSING", "LastName is missing."],
+    ["C", "ADDRESS_MISSING", "Adress is missing."],
+    ["C", "NAME_BAD_LENGTH", "Names must be 5-50 characters in length."],
+    ["C", "EMAIL_BAD_CONTENT", "Invalid Email."],
+    ["C", "INVALID_WORKER", "Cannot create a worker with the information provided."]
   ]
 }

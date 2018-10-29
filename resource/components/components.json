@@ -32,7 +32,7 @@
 
     "submitWorkerValidator": {
       "type": "validate.RuleValidator",
-      "DefaultErrorCode": "INVALID_EMAIL",
+      "DefaultErrorCode": "INVALID_WORKER",
       "Rules": "conf:createWorkerRules"
     }
   }
