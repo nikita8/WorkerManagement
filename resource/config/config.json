@@ -2,9 +2,16 @@
   "Facilities": {
     "HttpServer": true,
     "JsonWs": true,
-    "RuntimeCtl": true
+    "RuntimeCtl": true,
+    "ServiceErrorManager": true
   },
   "ApplicationLogger":{
     "GlobalLogLevel": "INFO"
-  }
+  },
+  "createWorkerRules": [
+    ["Email",  "STR",  "REQ"]
+  ],
+  "serviceErrors": [
+    ["C", "INVALID_EMAIL", "Email is not a valid string."]
+  ]
 }
