@@ -1,0 +1,59 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: ECS Roles and Policies
+Resources: 
+  CloudWatchLogsGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: WorkerManagementECSClusterLogs
+      RetentionInDays: 1
+
+  ContainerSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+     VpcId: !ImportValue VPC
+     GroupDescription: Container security group for ecs containers
+     SecurityGroupIngress:
+       - SourceSecurityGroupId: !ImportValue WorkerManagementECSClusterSG
+         IpProtocol: -1
+
+  ECSTaskExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service: [ecs-tasks.amazonaws.com]
+          Action: ['sts:AssumeRole']
+      Path: /
+      Policies:
+        - PolicyName: AmazonECSTaskExecutionRolePolicy
+          PolicyDocument:
+            Statement:
+            - Effect: Allow
+              Action:
+                # ECS Tasks to download images from ECR
+                - 'ecr:GetAuthorizationToken'
+                - 'ecr:BatchCheckLayerAvailability'
+                - 'ecr:GetDownloadUrlForLayer'
+                - 'ecr:BatchGetImage'
+                # ECS tasks to upload logs to CloudWatch
+                - 'logs:CreateLogStream'
+                - 'logs:PutLogEvents'
+              Resource: '*'
+Outputs:
+  ECSTaskExecutionRole:
+    Description: ECS Task Execution Role
+    Value: !GetAtt ECSTaskExecutionRole.Arn
+    Export:
+      Name: ECSTaskExecutionRole
+  ContainerSecurityGroup:
+    Description: container security group
+    Value: !Ref ContainerSecurityGroup
+    Export:
+      Name: ContainerSecurityGroup
+  CloudWatchLogsGroup:
+    Description: CloudWatch logs group
+    Value: !Ref CloudWatchLogsGroup
+    Export:
+      Name: CloudWatchLogsGroup
