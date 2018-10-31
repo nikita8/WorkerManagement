@@ -85,7 +85,7 @@ Resources:
       Conditions:
         - Field: path-pattern
           Values:
-            - /worker
+            - /*
       Actions:
         - TargetGroupArn: !Ref WebTargetGroup
           Type: forward
