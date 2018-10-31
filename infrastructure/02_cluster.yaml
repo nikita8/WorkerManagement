@@ -42,7 +42,8 @@ Resources:
     Type: AWS::ECS::Cluster
     Properties:
       ClusterName: WorkerManagementECSCluster
-Outputs: 
+
+Outputs:
   LoadBalancerDNS:
     Description: Domain name for the loadbalancer
     Value: !GetAtt LoadBalancer.DNSName
