@@ -1,9 +1,9 @@
 AWSTemplateFormatVersion: "2010-09-09"
 Description: ECS Service Definition
-Resources: 
+Resources:
   WorkerManagementTaskDefinition:
     Type: AWS::ECS::TaskDefinition
-    Properties: 
+    Properties:
       Cpu: 256
       Memory: 512
       ExecutionRoleArn: !ImportValue ECSTaskExecutionRole
@@ -12,11 +12,11 @@ Resources:
       RequiresCompatibilities:
         - FARGATE
       ContainerDefinitions:
-        - 
+        -
           Name: WorkerManagementAPI
           Image: 574574226067.dkr.ecr.us-east-1.amazonaws.com/worker-management:latest
-          PortMappings: 
-            - 
+          PortMappings:
+            -
               ContainerPort: 3000
           LogConfiguration:
             LogDriver: awslogs
@@ -24,10 +24,10 @@ Resources:
               awslogs-group: !ImportValue CloudWatchLogsGroup
               awslogs-region: !Ref AWS::Region
               awslogs-stream-prefix: worker-management
-  
+
   WorkerManagementECSService:
     Type: AWS::ECS::Service
-    Properties: 
+    Properties:
       Cluster: !ImportValue WorkerManagementECSCluster
       DesiredCount: 2
       LaunchType: FARGATE
@@ -35,12 +35,12 @@ Resources:
         - ContainerName: WorkerManagementAPI
           ContainerPort: 3000
           TargetGroupArn: !Ref WebTargetGroup
-      NetworkConfiguration: 
+      NetworkConfiguration:
         AwsvpcConfiguration:
           AssignPublicIp: ENABLED
           Subnets:
-          - !ImportValue SubnetAZ1Public
-          - !ImportValue SubnetAZ2Public
+          - !ImportValue SubnetAZ1Private
+          - !ImportValue SubnetAZ1Private
           SecurityGroups:
             - !ImportValue ContainerSecurityGroup
       ServiceName: WorkerManagement
@@ -67,5 +67,4 @@ Resources:
             - /worker
       Actions:
         - TargetGroupArn: !Ref WebTargetGroup
-          Type: forward   
-  
+          Type: forward
