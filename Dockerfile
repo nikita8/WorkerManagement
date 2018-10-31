@@ -1,21 +1,30 @@
-FROM golang:alpine
+FROM golang:alpine AS golibsbuild
 
 RUN apk add git
 
-RUN export GOPATH=$HOME
+# GOPATH is already set to /go
 ENV WORKSPACE=$GOPATH/src/worker-management
 ENV GRANITIC_HOME=$GOPATH/src/github.com/graniticio/granitic
 
-WORKDIR $WORKSPACE
+RUN go get github.com/graniticio/granitic
+RUN go get github.com/aws/aws-sdk-go/aws
+RUN go get github.com/aws/aws-sdk-go/service/dynamodb
+RUN go get github.com/satori/go.uuid
 
+# install the required packages
+RUN go install github.com/graniticio/granitic/cmd/grnc-bind
+RUN go install github.com/graniticio/granitic/cmd/grnc-ctl
+RUN go install github.com/graniticio/granitic/cmd/grnc-project
+
+WORKDIR $WORKSPACE
 ADD . $WORKSPACE
 
-RUN cd $WORKSPACE
+RUN grnc-bind && go build
 
-RUN ./packages
+FROM alpine
 
-RUN grnc-bind
+EXPOSE 3000
 
-RUN go build
+COPY --from=golibsbuild /go/src/worker-management/ .
 
-ENTRYPOINT ./worker-management
+CMD ./worker-management
