@@ -96,3 +96,14 @@ Resources:
       Actions:
         - TargetGroupArn: !Ref WebTargetGroup
           Type: forward
+
+Outputs:
+  WorkerManagementServiceStatusEndpoint:
+    Description: Endpoint for service status
+    Value: !Sub
+      - 'http://${LoadBalancerEndpoint}/status'
+      -
+        LoadBalancerEndpoint: !ImportValue WorkerManagementDomainName
+  WorkerManagementServiceEndpoint:
+    Description: Endpoint for service
+    Value: !ImportValue WorkerManagementDomainName
