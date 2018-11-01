@@ -30,7 +30,7 @@ Resources:
       ContainerDefinitions:
         -
           Name: WorkerManagementAPI
-          Image: 574574226067.dkr.ecr.us-east-1.amazonaws.com/worker-management:v3
+          Image: 574574226067.dkr.ecr.us-east-1.amazonaws.com/worker-management:1.91
           PortMappings:
             -
               ContainerPort: 3000
@@ -51,6 +51,7 @@ Resources:
         - ContainerName: WorkerManagementAPI
           ContainerPort: 3000
           TargetGroupArn: !Ref WebTargetGroup
+
       NetworkConfiguration:
         AwsvpcConfiguration:
           AssignPublicIp: DISABLED
