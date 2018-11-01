@@ -22,6 +22,7 @@ Resources:
       Cpu: 256
       Memory: 512
       ExecutionRoleArn: !ImportValue ECSTaskExecutionRole
+      TaskRoleArn: !ImportValue ECSTaskExecutionRole
       Family: WorkerManagementService
       NetworkMode: awsvpc
       RequiresCompatibilities:
@@ -60,6 +61,9 @@ Resources:
             - !Ref ContainerSecurityGroup
       ServiceName: WorkerManagement
       TaskDefinition: !Ref WorkerManagementTaskDefinition
+      DeploymentConfiguration:
+        MaximumPercent: 100
+        MinimumHealthyPercent: 50
 
   WebTargetGroup:
     Type: AWS::ElasticLoadBalancingV2::TargetGroup
@@ -74,8 +78,10 @@ Resources:
       HealthCheckPath: /status
       HealthCheckProtocol: HTTP
       HealthCheckTimeoutSeconds: 5
-      HealthyThresholdCount: 10
-      TargetType: ip
+      HealthyThresholdCount: 2
+      TargetGroupAttributes:
+      - Key: deregistration_delay.timeout_seconds
+        Value: 90
 
   WebListenerRule:
     Type: AWS::ElasticLoadBalancingV2::ListenerRule
