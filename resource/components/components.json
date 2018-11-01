@@ -29,6 +29,17 @@
       "PathPattern":"^/status[/]?$"
     },
 
+    "statusDynamoLogic": {
+      "type": "endpoint.StatusDynamoLogic"
+    },
+
+    "statusDynamoHandler": {
+      "type": "handler.WsHandler",
+      "HttpMethod": "GET",
+      "Logic": "ref:statusDynamoLogic",
+      "PathPattern":"^/status/dynamo[/]?$"
+    },
+
     "workerCreateLogic": {
       "type": "endpoint.WorkerCreateLogic"
     },
