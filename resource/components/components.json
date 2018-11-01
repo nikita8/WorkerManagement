@@ -18,6 +18,17 @@
       "BindPathParams": ["Id"]
     },
 
+    "statusLogic": {
+      "type": "endpoint.StatusLogic"
+    },
+
+    "statusHandler": {
+      "type": "handler.WsHandler",
+      "HttpMethod": "GET",
+      "Logic": "ref:statusLogic",
+      "PathPattern":"^/status[/]?$"
+    },
+
     "workerCreateLogic": {
       "type": "endpoint.WorkerCreateLogic"
     },
