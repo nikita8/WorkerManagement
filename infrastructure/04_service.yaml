@@ -30,7 +30,7 @@ Resources:
       ContainerDefinitions:
         -
           Name: WorkerManagementAPI
-          Image: 574574226067.dkr.ecr.us-east-1.amazonaws.com/worker-management:1.91
+          Image: 574574226067.dkr.ecr.us-east-1.amazonaws.com/worker-management:1.92
           PortMappings:
             -
               ContainerPort: 3000
