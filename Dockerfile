@@ -23,6 +23,8 @@ RUN grnc-bind && go build
 
 FROM alpine
 
+RUN apk add --no-cache ca-certificates
+
 EXPOSE 3000
 
 COPY --from=golibsbuild /go/src/worker-management/ .

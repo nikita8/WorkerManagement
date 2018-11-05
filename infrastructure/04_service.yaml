@@ -22,6 +22,7 @@ Resources:
       Cpu: 256
       Memory: 512
       ExecutionRoleArn: !ImportValue ECSTaskExecutionRole
+      TaskRoleArn: !ImportValue ECSTaskExecutionRole
       Family: WorkerManagementService
       NetworkMode: awsvpc
       RequiresCompatibilities:
@@ -29,7 +30,7 @@ Resources:
       ContainerDefinitions:
         -
           Name: WorkerManagementAPI
-          Image: 574574226067.dkr.ecr.us-east-1.amazonaws.com/worker-management:v3
+          Image: 574574226067.dkr.ecr.us-east-1.amazonaws.com/worker-management:1.91
           PortMappings:
             -
               ContainerPort: 3000
@@ -50,6 +51,7 @@ Resources:
         - ContainerName: WorkerManagementAPI
           ContainerPort: 3000
           TargetGroupArn: !Ref WebTargetGroup
+
       NetworkConfiguration:
         AwsvpcConfiguration:
           AssignPublicIp: DISABLED
@@ -60,6 +62,9 @@ Resources:
             - !Ref ContainerSecurityGroup
       ServiceName: WorkerManagement
       TaskDefinition: !Ref WorkerManagementTaskDefinition
+      DeploymentConfiguration:
+        MaximumPercent: 100
+        MinimumHealthyPercent: 50
 
   WebTargetGroup:
     Type: AWS::ElasticLoadBalancingV2::TargetGroup
@@ -74,8 +79,10 @@ Resources:
       HealthCheckPath: /status
       HealthCheckProtocol: HTTP
       HealthCheckTimeoutSeconds: 5
-      HealthyThresholdCount: 10
-      TargetType: ip
+      HealthyThresholdCount: 2
+      TargetGroupAttributes:
+      - Key: deregistration_delay.timeout_seconds
+        Value: 90
 
   WebListenerRule:
     Type: AWS::ElasticLoadBalancingV2::ListenerRule
@@ -89,3 +96,14 @@ Resources:
       Actions:
         - TargetGroupArn: !Ref WebTargetGroup
           Type: forward
+
+Outputs:
+  WorkerManagementServiceStatusEndpoint:
+    Description: Endpoint for service status
+    Value: !Sub
+      - 'http://${LoadBalancerEndpoint}/status'
+      -
+        LoadBalancerEndpoint: !ImportValue WorkerManagementDomainName
+  WorkerManagementServiceEndpoint:
+    Description: Endpoint for service
+    Value: !ImportValue WorkerManagementDomainName
