@@ -7,7 +7,6 @@ import (
   "worker-management/dbms"
   "github.com/aws/aws-sdk-go/service/dynamodb/dynamodbattribute"
   "github.com/graniticio/granitic/logging"
-  "github.com/graniticio/granitic/types"
 )
 
 type WorkerLogic struct {
@@ -26,10 +25,10 @@ type WorkerRequest struct {
 
 type WorkerCreateRequest struct {
   Id string
-  FirstName *types.NilableString 
-  LastName *types.NilableString
-  Email *types.NilableString
-  Address *types.NilableString
+  FirstName string 
+  LastName string
+  Email string
+  Address string
 }
 
 func (wl *WorkerLogic) Process(ctx context.Context, req *ws.WsRequest, res *ws.WsResponse) {
@@ -71,7 +70,7 @@ func (wl *WorkerCreateLogic) Process(ctx context.Context, req *ws.WsRequest, res
     wl.Log.LogErrorf("%v", err)
     return
   }
-
+  wl.Log.LogInfof("%v", item)
   err = dynamoClient.CreateWorker(item)
   if err != nil {
     wl.Log.LogErrorf("%v", err)
