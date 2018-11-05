@@ -7,6 +7,7 @@ import (
   "worker-management/dbms"
   "github.com/aws/aws-sdk-go/service/dynamodb/dynamodbattribute"
   "github.com/graniticio/granitic/logging"
+  "net/http"
 )
 
 type WorkerLogic struct {
@@ -40,20 +41,26 @@ func (wl *WorkerLogic) Process(ctx context.Context, req *ws.WsRequest, res *ws.W
 
   if err != nil {
     wl.Log.LogErrorf("%v", err)
+    res.HttpStatus = http.StatusInternalServerError
     return
   }
   result, err := dynamoClient.GetWorker(key)
   if err != nil {
     wl.Log.LogErrorf("%v", err)
+    res.HttpStatus = http.StatusInternalServerError
     return
   }
 
   worker := WorkerCreateRequest{}
 
   err = dynamodbattribute.UnmarshalMap(result.Item, &worker)
+  
   if err != nil {
     wl.Log.LogErrorf("%v", err)
+    res.HttpStatus = http.StatusInternalServerError
     return
+  } else if (WorkerCreateRequest{}) == worker {
+    res.HttpStatus = http.StatusNotFound
   }
 
   res.Body = worker
@@ -68,16 +75,18 @@ func (wl *WorkerCreateLogic) Process(ctx context.Context, req *ws.WsRequest, res
 
   if err != nil {
     wl.Log.LogErrorf("%v", err)
+    res.HttpStatus = http.StatusInternalServerError
     return
   }
   wl.Log.LogInfof("%v", item)
   err = dynamoClient.CreateWorker(item)
   if err != nil {
     wl.Log.LogErrorf("%v", err)
+    res.HttpStatus = http.StatusInternalServerError
     return
   }
 
-  res.Body = wr.Id
+  res.Body = WorkerRequest{Id: wr.Id}
 }
 
 func (wl *WorkerLogic) UnmarshallTarget() interface{} {
