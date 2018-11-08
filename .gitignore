@@ -1,2 +1,3 @@
 bindings*
 worker-management
+*.log

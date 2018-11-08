@@ -6,7 +6,9 @@
     "ServiceErrorManager": true
   },
   "HttpServer": {
-    "Port": 3000
+    "Address": "0.0.0.0",
+    "Port": 3000,
+    "AccessLogging": true
   },
   "ApplicationLogger":{
     "GlobalLogLevel": "INFO"
