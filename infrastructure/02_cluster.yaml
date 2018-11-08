@@ -1,8 +1,40 @@
 AWSTemplateFormatVersion: "2010-09-09"
 Description: ECS cluster for worker management
-Resources: 
+Resources:
+  BucketLoadBalancerAccessLogs:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub loadbalancer-worker-management-${AWS::Region}-${AWS::AccountId}
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+        - ServerSideEncryptionByDefault:
+            SSEAlgorithm: aws:kms
+      Tags:
+        - Key: Service
+          Value: WorkerManagement
+        - Key: Project
+          Value: Sputnik
+        - Key: Team
+          Value: TeamZero:Infra
+
+  BucketLoadBalancerAccessLogsPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref BucketLoadBalancerAccessLogs
+      PolicyDocument:
+        Version: '2008-10-17'
+        Statement:
+        - Sid: ELBAccessLogs20130930
+          Effect: Allow
+          Resource: !Sub arn:aws:s3:::${BucketLoadBalancerAccessLogs}/AWSLogs/${AWS::AccountId}/*
+          # https://docs.aws.amazon.com/elasticloadbalancing/latest/classic/enable-access-logs.html#attach-bucket-policy
+          Principal:
+            AWS: 127311923021
+          Action: ['s3:PutObject']
+
   LoadBalancer:
     Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    DependsOn: BucketLoadBalancerAccessLogsPolicy
     Properties:
       Name: ecs-services
       Subnets:
@@ -10,6 +42,11 @@ Resources:
       - !ImportValue SubnetAZ2Public
       SecurityGroups:
         - !Ref LoadBalancerSecurityGroup
+      LoadBalancerAttributes:
+        - Key: access_logs.s3.enabled
+          Value: 'true'
+        - Key: access_logs.s3.bucket
+          Value: !Ref BucketLoadBalancerAccessLogs
 
   LoadBalancerListener:
     Type: AWS::ElasticLoadBalancingV2::Listener
