@@ -34,5 +34,6 @@ COPY --from=gobuild /go/src/worker-management/ .
 
 EXPOSE 3000
 
+RUN ln -s /dev/stdout access.log
 
 CMD ./worker-management
