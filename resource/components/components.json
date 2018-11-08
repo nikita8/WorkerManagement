@@ -25,7 +25,8 @@
       "type": "handler.WsHandler",
       "HttpMethod": "GET",
       "Logic": "ref:statusLogic",
-      "PathPattern":"^/status[/]?$"
+      "PathPattern":"^/worker[s]?/service_status[/]?$",
+      "AllowDirectHTTPAccess": true
     },
 
     "statusDynamoLogic": {
@@ -36,7 +37,7 @@
       "type": "handler.WsHandler",
       "HttpMethod": "GET",
       "Logic": "ref:statusDynamoLogic",
-      "PathPattern":"^/status/dynamo[/]?$"
+      "PathPattern":"^/worker[s]?/service_status/dynamo[/]?$"
     },
 
     "workerCreateLogic": {
