@@ -1,8 +1,8 @@
 package main
 
-import "github.com/graniticio/granitic"
+import "github.com/graniticio/granitic-yaml"
 import "worker-management/bindings"
 
 func main() {
-	granitic.StartGranitic(bindings.Components())
+	granitic_yaml.StartGraniticWithYaml(bindings.Components())
 }
