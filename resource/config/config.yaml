@@ -8,6 +8,8 @@ HttpServer:
   Address: 0.0.0.0
   Port: 3000
   AccessLogging: true
+  AccessLog:
+    LogLinePreset: "common"
 ApplicationLogger:
   GlobalLogLevel: INFO
 createWorkerRules:
