@@ -1,0 +1,12 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: ECR repo for worker management
+Resources: 
+  WorkerManagementRepo: 
+    Type: AWS::ECR::Repository
+    Properties: 
+      RepositoryName: "worker-management"
+Outputs:    
+  WorkerManagementArn:
+    Value: !GetAtt WorkerManagementRepo.Arn
+    Export: 
+      Name: WorkerManagementArn

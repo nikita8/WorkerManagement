@@ -1,0 +1,17 @@
+# fetch the granitic framework
+echo "fetching packages..."
+echo "fetching granitic..."
+go get github.com/graniticio/granitic
+echo "fetching aws..."
+go get github.com/aws/aws-sdk-go/aws
+echo "fetching dynamodb..."
+go get github.com/aws/aws-sdk-go/service/dynamodb
+echo "fetching uuid..."
+go get github.com/satori/go.uuid
+
+# install the required packages
+go install github.com/graniticio/granitic/cmd/grnc-bind
+go install github.com/graniticio/granitic/cmd/grnc-ctl
+go install github.com/graniticio/granitic/cmd/grnc-project
+
+echo "completed"

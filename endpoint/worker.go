@@ -7,7 +7,7 @@ import (
   "worker-management/dbms"
   "github.com/aws/aws-sdk-go/service/dynamodb/dynamodbattribute"
   "github.com/graniticio/granitic/logging"
-  "github.com/graniticio/granitic/types"
+  "net/http"
 )
 
 type WorkerLogic struct {
@@ -24,12 +24,13 @@ type WorkerRequest struct {
   Id string
 }
 
-type WorkerCreateRequest struct {
+type WorkerCreateRequest map[string]interface{}
+
+type DynamoWorkerCreateRequest struct {
   Id string
-  FirstName *types.NilableString 
-  LastName *types.NilableString
-  Email *types.NilableString
-  Address *types.NilableString
+  Document interface{}
+  Version int
+  Schema int
 }
 
 func (wl *WorkerLogic) Process(ctx context.Context, req *ws.WsRequest, res *ws.WsResponse) {
@@ -38,49 +39,63 @@ func (wl *WorkerLogic) Process(ctx context.Context, req *ws.WsRequest, res *ws.W
   wr := req.RequestBody.(*WorkerRequest)
 
   key, err := dynamodbattribute.MarshalMap(wr)
-
+  wl.Log.LogInfof("%v", key)
   if err != nil {
     wl.Log.LogErrorf("%v", err)
+    res.HttpStatus = http.StatusInternalServerError
     return
   }
   result, err := dynamoClient.GetWorker(key)
   if err != nil {
     wl.Log.LogErrorf("%v", err)
+    res.HttpStatus = http.StatusInternalServerError
     return
   }
 
-  worker := WorkerCreateRequest{}
+  var worker map[string]interface{}
 
   err = dynamodbattribute.UnmarshalMap(result.Item, &worker)
+
   if err != nil {
     wl.Log.LogErrorf("%v", err)
+    res.HttpStatus = http.StatusInternalServerError
     return
+    } else if _, ok := worker["Id"].(string); !ok {
+    res.HttpStatus = http.StatusNotFound
+    return
+  } else if _, ok := worker["Document"].(map[string]interface{}); !ok {
+    worker["Document"] = make(map[string]interface{})
   }
 
-  res.Body = worker
+  responseBody := worker["Document"].(map[string]interface{})
+  responseBody["Id"] = worker["Id"].(string)
+  res.Body = responseBody
 }
 
 func (wl *WorkerCreateLogic) Process(ctx context.Context, req *ws.WsRequest, res *ws.WsResponse) {
   dynamoClient := wl.DBManager.Client()
   wr := req.RequestBody.(*WorkerCreateRequest)
-  wr.Id = generateUid()
-
-  item, err := dynamodbattribute.MarshalMap(wr)
+  dwr := DynamoWorkerCreateRequest{Document: wr, Version: 1, Schema: 1}
+  dwr.Id = generateUid()
+  
+  item, err := dynamodbattribute.MarshalMap(dwr)
 
   if err != nil {
     wl.Log.LogErrorf("%v", err)
+    res.HttpStatus = http.StatusInternalServerError
     return
   }
-
+  wl.Log.LogInfof("%v", item)
   err = dynamoClient.CreateWorker(item)
   if err != nil {
     wl.Log.LogErrorf("%v", err)
+    res.HttpStatus = http.StatusInternalServerError
     return
   }
 
-  res.Body = wr.Id
+  res.Body = WorkerRequest{Id: dwr.Id}
 }
-
+ 
 func (wl *WorkerLogic) UnmarshallTarget() interface{} {
   return new(WorkerRequest)
 }
@@ -98,4 +113,3 @@ func generateUid() string {
 type WorkerDetail struct {
   Name string
 }
-

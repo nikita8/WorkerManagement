@@ -1,0 +1,109 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: WorkerManagement ECS Service Definition
+Resources:
+  CloudWatchLogsGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: WorkerManagementECSClusterLogs
+      RetentionInDays: 1
+
+  ContainerSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+     VpcId: !ImportValue VPC
+     GroupDescription: Container security group for ecs containers
+     SecurityGroupIngress:
+       - SourceSecurityGroupId: !ImportValue WorkerManagementECSClusterSG
+         IpProtocol: -1
+
+  WorkerManagementTaskDefinition:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      Cpu: 256
+      Memory: 512
+      ExecutionRoleArn: !ImportValue ECSTaskExecutionRole
+      TaskRoleArn: !ImportValue ECSTaskExecutionRole
+      Family: WorkerManagementService
+      NetworkMode: awsvpc
+      RequiresCompatibilities:
+        - FARGATE
+      ContainerDefinitions:
+        -
+          Name: WorkerManagementAPI
+          Image: 574574226067.dkr.ecr.us-east-1.amazonaws.com/worker-management:1.92
+          PortMappings:
+            -
+              ContainerPort: 3000
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-group: !Ref CloudWatchLogsGroup
+              awslogs-region: !Ref AWS::Region
+              awslogs-stream-prefix: worker-management
+
+  WorkerManagementECSService:
+    Type: AWS::ECS::Service
+    Properties:
+      Cluster: !ImportValue WorkerManagementECSCluster
+      DesiredCount: 2
+      LaunchType: FARGATE
+      LoadBalancers:
+        - ContainerName: WorkerManagementAPI
+          ContainerPort: 3000
+          TargetGroupArn: !Ref WebTargetGroup
+
+      NetworkConfiguration:
+        AwsvpcConfiguration:
+          AssignPublicIp: DISABLED
+          Subnets:
+          - !ImportValue SubnetAZ1Private
+          - !ImportValue SubnetAZ2Private
+          SecurityGroups:
+            - !Ref ContainerSecurityGroup
+      ServiceName: WorkerManagement
+      TaskDefinition: !Ref WorkerManagementTaskDefinition
+      DeploymentConfiguration:
+        MaximumPercent: 100
+        MinimumHealthyPercent: 50
+
+  WebTargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      VpcId: !ImportValue VPC
+      Port: 80
+      Protocol: HTTP
+      Matcher:
+        HttpCode: 200-299
+      TargetType: ip
+      HealthCheckIntervalSeconds: 10
+      HealthCheckPath: /status
+      HealthCheckProtocol: HTTP
+      HealthCheckTimeoutSeconds: 5
+      HealthyThresholdCount: 2
+      TargetGroupAttributes:
+      - Key: deregistration_delay.timeout_seconds
+        Value: 90
+
+  WebListenerRule:
+    Type: AWS::ElasticLoadBalancingV2::ListenerRule
+    Properties:
+      ListenerArn: !ImportValue LoadBalancerListener
+      Priority: 1
+      Conditions:
+        - Field: path-pattern
+          Values:
+            - /*
+      Actions:
+        - TargetGroupArn: !Ref WebTargetGroup
+          Type: forward
+
+Outputs:
+  WorkerManagementServiceStatusEndpoint:
+    Description: Endpoint for service status
+    Value: !Sub
+      - 'http://${LoadBalancerEndpoint}/status'
+      -
+        LoadBalancerEndpoint: !ImportValue WorkerManagementDomainName
+  WorkerManagementServiceEndpoint:
+    Description: Endpoint for service
+    Value: !ImportValue WorkerManagementDomainName

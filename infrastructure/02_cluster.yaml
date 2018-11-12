@@ -1,0 +1,68 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: ECS cluster for worker management
+Resources: 
+  LoadBalancer:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      Name: ecs-services
+      Subnets:
+      - !ImportValue SubnetAZ1Public
+      - !ImportValue SubnetAZ2Public
+      SecurityGroups:
+        - !Ref LoadBalancerSecurityGroup
+
+  LoadBalancerListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      LoadBalancerArn: !Ref LoadBalancer
+      Protocol: HTTP
+      Port: 80
+      DefaultActions:
+        - Type: forward
+          TargetGroupArn: !Ref DefaultTargetGroup
+
+  LoadBalancerSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Security group for loadbalancer to services on ECS
+      VpcId: !ImportValue VPC
+      SecurityGroupIngress:
+        - CidrIp: 0.0.0.0/0
+          IpProtocol: -1
+
+  DefaultTargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      Name: default
+      VpcId: !ImportValue VPC
+      Protocol: HTTP
+      Port: 80
+
+  WorkerManagementECSCluster:
+    Type: AWS::ECS::Cluster
+    Properties:
+      ClusterName: WorkerManagementECSCluster
+
+Outputs:
+  LoadBalancerDNS:
+    Description: Domain name for the loadbalancer
+    Value: !GetAtt LoadBalancer.DNSName
+    Export:
+      Name: WorkerManagementDomainName
+  WorkerManagementECSCluster:
+    Description: ECS Cluster
+    Value: !Ref WorkerManagementECSCluster
+    Export:
+      Name: WorkerManagementECSCluster
+  WorkerManagementLoadBalancerSG:
+    Description: ECS Cluster security groups
+    Value: !Ref LoadBalancerSecurityGroup
+    Export:
+      Name: WorkerManagementECSClusterSG
+  LoadBalancerListener:
+    Description: LoadBalancer listener
+    Value: !Ref LoadBalancerListener
+    Export:
+      Name: LoadBalancerListener
+
+
