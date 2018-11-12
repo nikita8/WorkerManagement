@@ -2,7 +2,6 @@ package endpoint
 
 import (
   "context"
-  "fmt"
   "github.com/graniticio/granitic/ws"
   "github.com/satori/go.uuid"
   "worker-management/dbms"
