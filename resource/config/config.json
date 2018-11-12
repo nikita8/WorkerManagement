@@ -6,18 +6,11 @@
     "ServiceErrorManager": true
   },
   "HttpServer": {
-    "Address": "0.0.0.0",
     "Port": 3000
   },
   "ApplicationLogger":{
     "GlobalLogLevel": "INFO"
   },
-  "createWorkerRules": [
-    ["FirstName",  "STR",  "REQ:FIRST_NAME_MISSING", "LEN:1-50:NAME_BAD_LENGTH", "TRIM"],
-    ["LastName",  "STR",  "REQ:LAST_NAME_MISSING", "LEN:1-50:NAME_BAD_LENGTH", "TRIM"],
-    ["Email",  "STR",  "REQ:EMAIL_MISSING", "REG:^[_A-Za-z0-9-\\+]+(\\.[_A-Za-z0-9-]+)*@[A-Za-z0-9-]+(\\.[A-Za-z0-9]+)*(\\.[A-Za-z]{2,})$:EMAIL_BAD_CONTENT"],
-    ["Address",  "STR",  "REQ:ADDRESS_MISSING"]
-  ],
   "serviceErrors": [
     ["C", "EMAIL_MISSING", "Email is missing"],
     ["C", "FIRST_NAME_MISSING", "FirstName is missing."],
