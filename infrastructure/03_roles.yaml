@@ -26,6 +26,23 @@ Resources:
                 # ECS tasks to upload logs to CloudWatch
                 - 'logs:CreateLogStream'
                 - 'logs:PutLogEvents'
+              Resource: '*'
+
+  ECSServiceExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service: [ecs-tasks.amazonaws.com]
+          Action: ['sts:AssumeRole']
+      Policies:
+        - PolicyName: AmazonECSTaskExecutionRolePolicy
+          PolicyDocument:
+            Statement:
+            - Effect: Allow
+              Action:
                 # Rules which allow ECS to attach network interfaces to instances
                 # on your behalf in order for awsvpc networking mode to work right
                 - 'ec2:AttachNetworkInterface'
@@ -43,17 +60,8 @@ Resources:
                 - 'elasticloadbalancing:Describe*'
                 - 'elasticloadbalancing:RegisterInstancesWithLoadBalancer'
                 - 'elasticloadbalancing:RegisterTargets'
+                - 'dynamodb:*'
               Resource: '*'
-
-  ECSServiceExecutionRole:
-    Type: AWS::IAM::Role
-    Properties:
-      AssumeRolePolicyDocument:
-        Statement:
-        - Effect: Allow
-          Principal:
-            Service: [ecs-tasks.amazonaws.com]
-          Action: ['sts:AssumeRole']
 
 Outputs:
   ECSTaskExecutionRole:
