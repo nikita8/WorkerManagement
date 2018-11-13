@@ -1,11 +1,13 @@
 AWSTemplateFormatVersion: "2010-09-09"
 Description: WorkerManagement ECS Service Definition
+
 Resources:
+
   CloudWatchLogsGroup:
     Type: AWS::Logs::LogGroup
     Properties:
-      LogGroupName: /aws/ecs/wis
-      RetentionInDays: 1
+      LogGroupName: /aws/ecs/WKI
+      RetentionInDays: 7
 
   ContainerSecurityGroup:
     Type: AWS::EC2::SecurityGroup
@@ -16,87 +18,13 @@ Resources:
        - SourceSecurityGroupId: !ImportValue WorkerManagementECSClusterSG
          IpProtocol: '-1'
 
-  NginxTaskDefinition:
-    Type: AWS::ECS::TaskDefinition
-    Properties:
-      Cpu: "256"
-      Memory: "512"
-      ExecutionRoleArn: !ImportValue ECSTaskExecutionRole
-      TaskRoleArn: !ImportValue ECSTaskExecutionRole
-      Family: NginxServiceTask
-      NetworkMode: awsvpc
-      RequiresCompatibilities:
-        - FARGATE
-      ContainerDefinitions:
-        -
-          Name: NginxHello
-          Image: bitnami/nginx
-          PortMappings:
-            - ContainerPort: 8080
-          LogConfiguration:
-            LogDriver: awslogs
-            Options:
-              awslogs-group: !Ref CloudWatchLogsGroup
-              awslogs-region: !Ref AWS::Region
-              awslogs-stream-prefix: nginx
-
-  NginxECSService:
-    Type: AWS::ECS::Service
-    DependsOn: NginxListenerRule
-    Properties:
-      Cluster: !ImportValue WorkerManagementECSCluster
-      DesiredCount: 1
-      LaunchType: FARGATE
-      LoadBalancers:
-        - ContainerName: NginxHello
-          ContainerPort: 8080
-          TargetGroupArn: !Ref NginxTargetGroup
-      NetworkConfiguration:
-        AwsvpcConfiguration:
-          AssignPublicIp: DISABLED
-          Subnets:
-          - !ImportValue SubnetAZ1Private
-          - !ImportValue SubnetAZ2Private
-          SecurityGroups:
-            - !Ref ContainerSecurityGroup
-      ServiceName: NginxHelloService
-      TaskDefinition: !Ref NginxTaskDefinition
-
-  NginxTargetGroup:
-    Type: AWS::ElasticLoadBalancingV2::TargetGroup
-    Properties:
-      VpcId: !ImportValue VPC
-      Port: 80
-      Protocol: HTTP
-      Matcher:
-        HttpCode: 200-299
-      TargetType: ip
-      HealthCheckPath: /
-      HealthCheckProtocol: HTTP
-      TargetGroupAttributes:
-      - Key: deregistration_delay.timeout_seconds
-        Value: "60"
-
-  NginxListenerRule:
-    Type: AWS::ElasticLoadBalancingV2::ListenerRule
-    Properties:
-      ListenerArn: !ImportValue LoadBalancerListener
-      Priority: 103
-      Conditions:
-        - Field: path-pattern
-          Values:
-            - /*
-      Actions:
-        - TargetGroupArn: !Ref NginxTargetGroup
-          Type: forward
-
   WorkerManagementTaskDefinition:
     Type: AWS::ECS::TaskDefinition
     Properties:
       Cpu: "256"
       Memory: "512"
       ExecutionRoleArn: !ImportValue ECSTaskExecutionRole
-      TaskRoleArn: !ImportValue ECSTaskExecutionRole
+      TaskRoleArn: !ImportValue ECSServiceExecutionRole
       Family: WorkerManagementServiceTask
       NetworkMode: awsvpc
       RequiresCompatibilities:
@@ -104,7 +32,7 @@ Resources:
       ContainerDefinitions:
         -
           Name: WorkerManagementAPI
-          Image: 574574226067.dkr.ecr.us-east-1.amazonaws.com/worker-management:1.96
+          Image: 574574226067.dkr.ecr.us-east-1.amazonaws.com/worker-management:1.97
           PortMappings:
             - ContainerPort: 3000
           LogConfiguration:
@@ -112,7 +40,7 @@ Resources:
             Options:
               awslogs-group: !Ref CloudWatchLogsGroup
               awslogs-region: !Ref AWS::Region
-              awslogs-stream-prefix: worker-management
+              awslogs-stream-prefix: worker-mgmt-srv
 
   WorkerManagementECSService:
     Type: AWS::ECS::Service
@@ -121,7 +49,6 @@ Resources:
       Cluster: !ImportValue WorkerManagementECSCluster
       DesiredCount: 1
       LaunchType: FARGATE
-      HealthCheckGracePeriodSeconds: 30
       LoadBalancers:
         - ContainerName: WorkerManagementAPI
           ContainerPort: 3000
@@ -163,7 +90,7 @@ Resources:
     Type: AWS::ElasticLoadBalancingV2::ListenerRule
     Properties:
       ListenerArn: !ImportValue LoadBalancerListener
-      Priority: 102
+      Priority: 100
       Conditions:
         - Field: path-pattern
           Values:
@@ -179,6 +106,3 @@ Outputs:
       - 'http://${LoadBalancerEndpoint}/workers/service_status'
       -
         LoadBalancerEndpoint: !ImportValue WorkerManagementDomainName
-  WorkerManagementServiceEndpoint:
-    Description: Endpoint for service
-    Value: !ImportValue WorkerManagementDomainName
