@@ -8,13 +8,17 @@
     "workerLogic": {
       "type": "endpoint.WorkerLogic"
     },
-
+    "userIdentifier": {
+      "type": "siam.UserIdentifier"
+    },
     "workerHandler": {
       "type": "handler.WsHandler",
       "HttpMethod": "GET",
       "Logic": "ref:workerLogic",
       "PathPattern": "^/worker/([a-zA-Z0-9\\-]+)[/]?$",
-      "BindPathParams": ["Id"]
+      "BindPathParams": ["Id"],
+      "RequireAuthentication": true,
+      "UserIdentifier": "ref:userIdentifier"
     },
 
     "statusLogic": {
