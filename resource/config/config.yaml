@@ -9,7 +9,7 @@ HttpServer:
   Port: 3000
   AccessLogging: true
   AccessLog:
-    LogLinePreset: "common"
+    LogLinePreset: "framework"
 ApplicationLogger:
   GlobalLogLevel: INFO
 createWorkerRules:
