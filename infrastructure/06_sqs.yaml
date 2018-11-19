@@ -1,0 +1,179 @@
+---
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Create a topic for worker
+Parameters:
+  MyPublishUserPassword:
+    NoEcho: 'true'
+    Type: String
+    Description: Password for the IAM user MyPublishUser
+    MinLength: '1'
+    MaxLength: '41'
+    AllowedPattern: "[a-zA-Z0-9]*"
+    ConstraintDescription: must contain only alphanumeric characters.
+  MyQueueUserPassword:
+    NoEcho: 'true'
+    Type: String
+    Description: Password for the IAM user MyQueueUser
+    MinLength: '1'
+    MaxLength: '41'
+    AllowedPattern: "[a-zA-Z0-9]*"
+    ConstraintDescription: must contain only alphanumeric characters.
+Resources:
+  MySNSTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      Subscription:
+      - Endpoint:
+          Fn::GetAtt:
+          - MyQueue1
+          - Arn
+        Protocol: sqs
+      - Endpoint:
+          Fn::GetAtt:
+          - MyQueue2
+          - Arn
+        Protocol: sqs
+  MyQueue1:
+    Type: AWS::SQS::Queue
+  MyQueue2:
+    Type: AWS::SQS::Queue
+  MyPublishUser:
+    Type: AWS::IAM::User
+    Properties:
+      LoginProfile:
+        Password:
+          Ref: MyPublishUserPassword
+  MyPublishUserKey:
+    Type: AWS::IAM::AccessKey
+    Properties:
+      UserName:
+        Ref: MyPublishUser
+  MyPublishTopicGroup:
+    Type: AWS::IAM::Group
+    Properties:
+      Policies:
+      - PolicyName: MyTopicGroupPolicy
+        PolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+          - Effect: Allow
+            Action:
+            - sns:Publish
+            Resource:
+              Ref: MySNSTopic
+  AddUserToMyPublishTopicGroup:
+    Type: AWS::IAM::UserToGroupAddition
+    Properties:
+      GroupName:
+        Ref: MyPublishTopicGroup
+      Users:
+      - Ref: MyPublishUser
+  MyQueueUser:
+    Type: AWS::IAM::User
+    Properties:
+      LoginProfile:
+        Password:
+          Ref: MyQueueUserPassword
+  MyQueueUserKey:
+    Type: AWS::IAM::AccessKey
+    Properties:
+      UserName:
+        Ref: MyQueueUser
+  MyRDMessageQueueGroup:
+    Type: AWS::IAM::Group
+    Properties:
+      Policies:
+      - PolicyName: MyQueueGroupPolicy
+        PolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+          - Effect: Allow
+            Action:
+            - sqs:DeleteMessage
+            - sqs:ReceiveMessage
+            Resource:
+            - Fn::GetAtt:
+              - MyQueue1
+              - Arn
+            - Fn::GetAtt:
+              - MyQueue2
+              - Arn
+  AddUserToMyQueueGroup:
+    Type: AWS::IAM::UserToGroupAddition
+    Properties:
+      GroupName:
+        Ref: MyRDMessageQueueGroup
+      Users:
+      - Ref: MyQueueUser
+  MyQueuePolicy:
+    Type: AWS::SQS::QueuePolicy
+    Properties:
+      PolicyDocument:
+        Version: '2012-10-17'
+        Id: MyQueuePolicy
+        Statement:
+        - Sid: Allow-SendMessage-To-Both-Queues-From-SNS-Topic
+          Effect: Allow
+          Principal: "*"
+          Action:
+          - sqs:SendMessage
+          Resource: "*"
+          Condition:
+            ArnEquals:
+              aws:SourceArn:
+                Ref: MySNSTopic
+      Queues:
+      - Ref: MyQueue1
+      - Ref: MyQueue2
+Outputs:
+  MySNSTopicTopicARN:
+    Value:
+      Ref: MySNSTopic
+  MyQueue1Info:
+    Value:
+      Fn::Join:
+      - " "
+      - - 'ARN:'
+        - Fn::GetAtt:
+          - MyQueue1
+          - Arn
+        - 'URL:'
+        - Ref: MyQueue1
+  MyQueue2Info:
+    Value:
+      Fn::Join:
+      - " "
+      - - 'ARN:'
+        - Fn::GetAtt:
+          - MyQueue2
+          - Arn
+        - 'URL:'
+        - Ref: MyQueue2
+  MyPublishUserInfo:
+    Value:
+      Fn::Join:
+      - " "
+      - - 'ARN:'
+        - Fn::GetAtt:
+          - MyPublishUser
+          - Arn
+        - 'Access Key:'
+        - Ref: MyPublishUserKey
+        - 'Secret Key:'
+        - Fn::GetAtt:
+          - MyPublishUserKey
+          - SecretAccessKey
+  MyQueueUserInfo:
+    Value:
+      Fn::Join:
+      - " "
+      - - 'ARN:'
+        - Fn::GetAtt:
+          - MyQueueUser
+          - Arn
+        - 'Access Key:'
+        - Ref: MyQueueUserKey
+        - 'Secret Key:'
+        - Fn::GetAtt:
+          - MyQueueUserKey
+          - SecretAccessKey

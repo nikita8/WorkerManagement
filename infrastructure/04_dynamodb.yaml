@@ -1,7 +1,19 @@
 ---
 AWSTemplateFormatVersion: '2010-09-09'
 Description: 'Create worker table for dynamodb.'
+
 Parameters:
+  EnvironmentName:
+    Default: alpha
+    Description: Name of the environment this cloudformation stack belongs to
+    Type: String
+  EnvironmentType:
+    Default: nonproduction
+    Description: Type of the environment for this stack
+    Type: String
+    AllowedValues:
+      - nonproduction
+      - production
   ReadCapacityUnits:
     Description: Provisioned read throughput
     Type: Number
@@ -16,8 +28,9 @@ Parameters:
     MinValue: '5'
     MaxValue: '10000'
     ConstraintDescription: must be between 5 and 10000
+
 Resources:
-  workerDynamoDBTable:
+  WorkerDynamoDBTable:
     Type: AWS::DynamoDB::Table
     Properties:
       AttributeDefinitions:
@@ -31,9 +44,10 @@ Resources:
           Ref: ReadCapacityUnits
         WriteCapacityUnits:
           Ref: WriteCapacityUnits
-      TableName: Workers
+      TableName: !Sub Workers-${EnvironmentName}
 Outputs:
   TableName:
-    Value:
-      Ref: workerDynamoDBTable
+    Value: !Ref WorkerDynamoDBTable
     Description: Table name of the newly created DynamoDB table
+    Export:
+      Name: !Join [ ':', [ !Ref EnvironmentName, WorkerDynamoDBTable ] ]

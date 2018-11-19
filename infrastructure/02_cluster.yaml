@@ -1,52 +1,37 @@
 AWSTemplateFormatVersion: "2010-09-09"
 Description: ECS cluster for worker management
+
+Parameters:
+  EnvironmentName:
+    Default: alpha
+    Description: Name of the environment this cloudformation stack belongs to
+    Type: String
+
+  EnvironmentType:
+    Default: nonproduction
+    Description: Type of the environment for this stack
+    Type: String
+    AllowedValues:
+      - nonproduction
+      - production
+
 Resources:
-  BucketLoadBalancerAccessLogs:
-    Type: AWS::S3::Bucket
-    Properties:
-      BucketName: !Sub loadbalancer-worker-management-${AWS::Region}-${AWS::AccountId}
-      BucketEncryption:
-        ServerSideEncryptionConfiguration:
-        - ServerSideEncryptionByDefault:
-            SSEAlgorithm: aws:kms
-      Tags:
-        - Key: Service
-          Value: WorkerManagement
-        - Key: Project
-          Value: Sputnik
-        - Key: Team
-          Value: TeamZero:Infra
-
-  BucketLoadBalancerAccessLogsPolicy:
-    Type: AWS::S3::BucketPolicy
-    Properties:
-      Bucket: !Ref BucketLoadBalancerAccessLogs
-      PolicyDocument:
-        Version: '2008-10-17'
-        Statement:
-        - Sid: ELBAccessLogs20130930
-          Effect: Allow
-          Resource: !Sub arn:aws:s3:::${BucketLoadBalancerAccessLogs}/AWSLogs/${AWS::AccountId}/*
-          # https://docs.aws.amazon.com/elasticloadbalancing/latest/classic/enable-access-logs.html#attach-bucket-policy
-          Principal:
-            AWS: 127311923021
-          Action: ['s3:PutObject']
-
   LoadBalancer:
     Type: AWS::ElasticLoadBalancingV2::LoadBalancer
-    DependsOn: BucketLoadBalancerAccessLogsPolicy
     Properties:
-      Name: ecs-services
+      Name: wis-ecs-services
       Subnets:
-      - !ImportValue SubnetAZ1Public
-      - !ImportValue SubnetAZ2Public
+      - Fn::ImportValue:
+          !Join [ "", [ !Ref EnvironmentName, ":SubnetAZ1Public" ]]
+      - Fn::ImportValue:
+          !Join [ "", [ !Ref EnvironmentName, ":SubnetAZ2Public" ]]
       SecurityGroups:
         - !Ref LoadBalancerSecurityGroup
       LoadBalancerAttributes:
         - Key: access_logs.s3.enabled
           Value: 'true'
         - Key: access_logs.s3.bucket
-          Value: !Ref BucketLoadBalancerAccessLogs
+          Value: !ImportValue BucketLoadBalancer
 
   LoadBalancerListener:
     Type: AWS::ElasticLoadBalancingV2::Listener
@@ -62,16 +47,31 @@ Resources:
     Type: AWS::EC2::SecurityGroup
     Properties:
       GroupDescription: Security group for loadbalancer to services on ECS
-      VpcId: !ImportValue VPC
+      VpcId:
+        Fn::ImportValue:
+          !Join [ "", [ !Ref EnvironmentName, ":VPC" ]]
       SecurityGroupIngress:
         - CidrIp: 0.0.0.0/0
           IpProtocol: -1
 
+  ContainerSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+     VpcId:
+        Fn::ImportValue:
+          !Join [ "", [ !Ref EnvironmentName, ":VPC" ]]
+     GroupDescription: Container security group for ecs containers
+     SecurityGroupIngress:
+       - SourceSecurityGroupId: !Ref LoadBalancerSecurityGroup
+         IpProtocol: '-1'
+
   DefaultTargetGroup:
     Type: AWS::ElasticLoadBalancingV2::TargetGroup
     Properties:
-      Name: default
-      VpcId: !ImportValue VPC
+      Name: wis-default
+      VpcId:
+        Fn::ImportValue:
+          !Join [ "", [ !Ref EnvironmentName, ":VPC" ]]
       Protocol: HTTP
       Port: 80
 
@@ -85,21 +85,21 @@ Outputs:
     Description: Domain name for the loadbalancer
     Value: !GetAtt LoadBalancer.DNSName
     Export:
-      Name: WorkerManagementDomainName
+      Name: !Join [':', [ !Ref EnvironmentName, WorkerManagementDomainName ]]
   WorkerManagementECSCluster:
     Description: ECS Cluster
     Value: !Ref WorkerManagementECSCluster
     Export:
-      Name: WorkerManagementECSCluster
-  WorkerManagementLoadBalancerSG:
-    Description: ECS Cluster security groups
+      Name: !Join [':', [ !Ref EnvironmentName, WorkerManagementECSCluster ]]
+  ContainerSecurityGroup:
+    Description: ECS Cluster container security group
     Value: !Ref LoadBalancerSecurityGroup
     Export:
-      Name: WorkerManagementECSClusterSG
+      Name: !Join [':', [ !Ref EnvironmentName, ContainerSecurityGroup ]]
   LoadBalancerListener:
     Description: LoadBalancer listener
     Value: !Ref LoadBalancerListener
     Export:
-      Name: LoadBalancerListener
+      Name: !Join [':', [ !Ref EnvironmentName, LoadBalancerListener ]]
 
 

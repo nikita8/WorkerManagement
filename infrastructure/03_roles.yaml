@@ -1,8 +1,23 @@
 AWSTemplateFormatVersion: "2010-09-09"
 Description: ECS Roles and Policies
+
+Parameters:
+  EnvironmentName:
+    Default: alpha
+    Description: Name of the environment this cloudformation stack belongs to
+    Type: String
+
+  EnvironmentType:
+    Default: nonproduction
+    Description: Type of the environment for this stack
+    Type: String
+    AllowedValues:
+      - nonproduction
+      - production
+
 Resources:
 
-  ECSTaskExecutionRole:
+  ECSTaskRole:
     Type: AWS::IAM::Role
     Properties:
       AssumeRolePolicyDocument:
@@ -43,35 +58,18 @@ Resources:
             Statement:
             - Effect: Allow
               Action:
-                # Rules which allow ECS to attach network interfaces to instances
-                # on your behalf in order for awsvpc networking mode to work right
-                - 'ec2:AttachNetworkInterface'
-                - 'ec2:CreateNetworkInterface'
-                - 'ec2:CreateNetworkInterfacePermission'
-                - 'ec2:DeleteNetworkInterface'
-                - 'ec2:DeleteNetworkInterfacePermission'
-                - 'ec2:Describe*'
-                - 'ec2:DetachNetworkInterface'
-
-                # Rules which allow ECS to update load balancers on your behalf
-                # with the information sabout how to send traffic to your containers
-                - 'elasticloadbalancing:DeregisterInstancesFromLoadBalancer'
-                - 'elasticloadbalancing:DeregisterTargets'
-                - 'elasticloadbalancing:Describe*'
-                - 'elasticloadbalancing:RegisterInstancesWithLoadBalancer'
-                - 'elasticloadbalancing:RegisterTargets'
                 - 'dynamodb:*'
               Resource: '*'
 
 Outputs:
-  ECSTaskExecutionRole:
+  ECSTaskRole:
     Description: ECS Task Execution Role
-    Value: !GetAtt ECSTaskExecutionRole.Arn
+    Value: !GetAtt ECSTaskRole.Arn
     Export:
-      Name: ECSTaskExecutionRole
+      Name: !Join [':', [ !Ref EnvironmentName, ECSTaskRole ]]
 
   ECSServiceExecutionRole:
     Description: ECS Service Execution Role
     Value: !GetAtt ECSServiceExecutionRole.Arn
     Export:
-      Name: ECSServiceExecutionRole
+      Name: !Join [':', [ !Ref EnvironmentName, ECSServiceExecutionRole ]]

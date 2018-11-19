@@ -1,38 +1,47 @@
 AWSTemplateFormatVersion: "2010-09-09"
 Description: WorkerManagement ECS Service Definition
 
+Parameters:
+  EnvironmentName:
+    Default: alpha
+    Description: Name of the environment this cloudformation stack belongs to
+    Type: String
+  EnvironmentType:
+    Default: nonproduction
+    Description: Type of the environment for this stack
+    Type: String
+    AllowedValues:
+      - nonproduction
+      - production
+  AppVersion:
+    Default: latest
+    Type: String
+
 Resources:
 
   CloudWatchLogsGroup:
     Type: AWS::Logs::LogGroup
     Properties:
-      LogGroupName: /aws/ecs/WKI
+      LogGroupName: !Sub /aws/ecs/WKI-${EnvironmentName}
       RetentionInDays: 7
-
-  ContainerSecurityGroup:
-    Type: AWS::EC2::SecurityGroup
-    Properties:
-     VpcId: !ImportValue VPC
-     GroupDescription: Container security group for ecs containers
-     SecurityGroupIngress:
-       - SourceSecurityGroupId: !ImportValue WorkerManagementECSClusterSG
-         IpProtocol: '-1'
 
   WorkerManagementTaskDefinition:
     Type: AWS::ECS::TaskDefinition
     Properties:
       Cpu: "256"
       Memory: "512"
-      ExecutionRoleArn: !ImportValue ECSTaskExecutionRole
-      TaskRoleArn: !ImportValue ECSServiceExecutionRole
-      Family: WorkerManagementServiceTask
+      ExecutionRoleArn:
+        Fn::ImportValue: !Sub ${EnvironmentName}:ECSTaskRole
+      TaskRoleArn:
+        Fn::ImportValue: !Sub ${EnvironmentName}:ECSServiceExecutionRole
+      Family: !Sub wm-srv-task-${EnvironmentName}
       NetworkMode: awsvpc
       RequiresCompatibilities:
         - FARGATE
       ContainerDefinitions:
         -
           Name: WorkerManagementAPI
-          Image: 574574226067.dkr.ecr.us-east-1.amazonaws.com/worker-management:1.97
+          Image: !Sub 574574226067.dkr.ecr.us-east-1.amazonaws.com/worker-management:${AppVersion}
           PortMappings:
             - ContainerPort: 3000
           LogConfiguration:
@@ -46,7 +55,8 @@ Resources:
     Type: AWS::ECS::Service
     DependsOn: WebListenerRule
     Properties:
-      Cluster: !ImportValue WorkerManagementECSCluster
+      Cluster:
+        Fn::ImportValue: !Sub ${EnvironmentName}:WorkerManagementECSCluster
       DesiredCount: 1
       LaunchType: FARGATE
       LoadBalancers:
@@ -58,11 +68,11 @@ Resources:
         AwsvpcConfiguration:
           AssignPublicIp: DISABLED
           Subnets:
-          - !ImportValue SubnetAZ1Private
-          - !ImportValue SubnetAZ2Private
+          - Fn::ImportValue: !Sub ${EnvironmentName}:SubnetAZ1Private
+          - Fn::ImportValue: !Sub ${EnvironmentName}:SubnetAZ2Private
           SecurityGroups:
-            - !Ref ContainerSecurityGroup
-      ServiceName: WorkerManagementService
+            - Fn::ImportValue: !Sub ${EnvironmentName}:ContainerSecurityGroup
+      ServiceName: !Sub wm-srv-${EnvironmentName}
       TaskDefinition: !Ref WorkerManagementTaskDefinition
       DeploymentConfiguration:
         MaximumPercent: 200
@@ -71,7 +81,8 @@ Resources:
   WebTargetGroup:
     Type: AWS::ElasticLoadBalancingV2::TargetGroup
     Properties:
-      VpcId: !ImportValue VPC
+      VpcId:
+        Fn::ImportValue: !Sub ${EnvironmentName}:VPC
       Port: 80
       Protocol: HTTP
       Matcher:
@@ -89,7 +100,8 @@ Resources:
   WebListenerRule:
     Type: AWS::ElasticLoadBalancingV2::ListenerRule
     Properties:
-      ListenerArn: !ImportValue LoadBalancerListener
+      ListenerArn:
+        Fn::ImportValue: !Sub ${EnvironmentName}:LoadBalancerListener
       Priority: 100
       Conditions:
         - Field: path-pattern
@@ -105,4 +117,5 @@ Outputs:
     Value: !Sub
       - 'http://${LoadBalancerEndpoint}/workers/service_status'
       -
-        LoadBalancerEndpoint: !ImportValue WorkerManagementDomainName
+        LoadBalancerEndpoint:
+          Fn::ImportValue: !Sub ${EnvironmentName}:WorkerManagementDomainName
