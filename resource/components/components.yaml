@@ -1,0 +1,40 @@
+packages:
+  - github.com/graniticio/granitic/ws/handler
+  - worker-management/endpoint
+  - github.com/graniticio/granitic/validate
+components:
+  workerLogic:
+    type: endpoint.WorkerLogic
+  workerHandler:
+    type: handler.WsHandler
+    HttpMethod: GET
+    Logic: ref:workerLogic
+    PathPattern: "^/worker/([a-zA-Z0-9\\-]+)[/]?$"
+    BindPathParams: ["Id"]
+  statusLogic:
+    type: endpoint.StatusLogic
+  statusHandler:
+    type: handler.WsHandler
+    HttpMethod: GET
+    Logic: ref:statusLogic
+    PathPattern: "^/worker[s]?/service_status[/]?$"
+    AllowDirectHTTPAccess: true
+  statusDynamoLogic:
+    type: endpoint.StatusDynamoLogic
+  statusDynamoHandler:
+    type: handler.WsHandler
+    HttpMethod: GET
+    Logic: ref:statusDynamoLogic
+    PathPattern: "^/worker[s]?/service_status/dynamo[/]?$"
+  workerCreateLogic:
+    type: endpoint.WorkerCreateLogic
+  workerCreateHandler:
+    type: handler.WsHandler
+    HttpMethod: POST
+    Logic: ref:workerCreateLogic
+    PathPattern: "^/worker[/]?$"
+    AutoValidator: ref:submitWorkerValidator
+  submitWorkerValidator:
+    type: validate.RuleValidator
+    DefaultErrorCode: INVALID_WORKER
+    Rules: conf:createWorkerRules

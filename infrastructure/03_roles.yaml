@@ -1,8 +1,23 @@
 AWSTemplateFormatVersion: "2010-09-09"
 Description: ECS Roles and Policies
+
+Parameters:
+  EnvironmentName:
+    Default: alpha
+    Description: Name of the environment this cloudformation stack belongs to
+    Type: String
+
+  EnvironmentType:
+    Default: nonproduction
+    Description: Type of the environment for this stack
+    Type: String
+    AllowedValues:
+      - nonproduction
+      - production
+
 Resources:
 
-  ECSTaskExecutionRole:
+  ECSTaskRole:
     Type: AWS::IAM::Role
     Properties:
       AssumeRolePolicyDocument:
@@ -28,9 +43,33 @@ Resources:
                 - 'logs:PutLogEvents'
               Resource: '*'
 
+  ECSServiceExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service: [ecs-tasks.amazonaws.com]
+          Action: ['sts:AssumeRole']
+      Policies:
+        - PolicyName: AmazonECSTaskExecutionRolePolicy
+          PolicyDocument:
+            Statement:
+            - Effect: Allow
+              Action:
+                - 'dynamodb:*'
+              Resource: '*'
+
 Outputs:
-  ECSTaskExecutionRole:
+  ECSTaskRole:
     Description: ECS Task Execution Role
-    Value: !GetAtt ECSTaskExecutionRole.Arn
+    Value: !GetAtt ECSTaskRole.Arn
     Export:
-      Name: ECSTaskExecutionRole
+      Name: !Join [':', [ !Ref EnvironmentName, ECSTaskRole ]]
+
+  ECSServiceExecutionRole:
+    Description: ECS Service Execution Role
+    Value: !GetAtt ECSServiceExecutionRole.Arn
+    Export:
+      Name: !Join [':', [ !Ref EnvironmentName, ECSServiceExecutionRole ]]

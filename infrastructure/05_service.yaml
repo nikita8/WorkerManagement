@@ -1,51 +1,63 @@
 AWSTemplateFormatVersion: "2010-09-09"
 Description: WorkerManagement ECS Service Definition
+
+Parameters:
+  EnvironmentName:
+    Default: alpha
+    Description: Name of the environment this cloudformation stack belongs to
+    Type: String
+  EnvironmentType:
+    Default: nonproduction
+    Description: Type of the environment for this stack
+    Type: String
+    AllowedValues:
+      - nonproduction
+      - production
+  AppVersion:
+    Default: latest
+    Type: String
+
 Resources:
+
   CloudWatchLogsGroup:
     Type: AWS::Logs::LogGroup
     Properties:
-      LogGroupName: WorkerManagementECSClusterLogs
-      RetentionInDays: 1
-
-  ContainerSecurityGroup:
-    Type: AWS::EC2::SecurityGroup
-    Properties:
-     VpcId: !ImportValue VPC
-     GroupDescription: Container security group for ecs containers
-     SecurityGroupIngress:
-       - SourceSecurityGroupId: !ImportValue WorkerManagementECSClusterSG
-         IpProtocol: -1
+      LogGroupName: !Sub /aws/ecs/WKI-${EnvironmentName}
+      RetentionInDays: 7
 
   WorkerManagementTaskDefinition:
     Type: AWS::ECS::TaskDefinition
     Properties:
-      Cpu: 256
-      Memory: 512
-      ExecutionRoleArn: !ImportValue ECSTaskExecutionRole
-      TaskRoleArn: !ImportValue ECSTaskExecutionRole
-      Family: WorkerManagementService
+      Cpu: "256"
+      Memory: "512"
+      ExecutionRoleArn:
+        Fn::ImportValue: !Sub ${EnvironmentName}:ECSTaskRole
+      TaskRoleArn:
+        Fn::ImportValue: !Sub ${EnvironmentName}:ECSServiceExecutionRole
+      Family: !Sub wm-srv-task-${EnvironmentName}
       NetworkMode: awsvpc
       RequiresCompatibilities:
         - FARGATE
       ContainerDefinitions:
         -
           Name: WorkerManagementAPI
-          Image: 574574226067.dkr.ecr.us-east-1.amazonaws.com/worker-management:1.92
+          Image: !Sub 574574226067.dkr.ecr.us-east-1.amazonaws.com/worker-management:${AppVersion}
           PortMappings:
-            -
-              ContainerPort: 3000
+            - ContainerPort: 3000
           LogConfiguration:
             LogDriver: awslogs
             Options:
               awslogs-group: !Ref CloudWatchLogsGroup
               awslogs-region: !Ref AWS::Region
-              awslogs-stream-prefix: worker-management
+              awslogs-stream-prefix: worker-mgmt-srv
 
   WorkerManagementECSService:
     Type: AWS::ECS::Service
+    DependsOn: WebListenerRule
     Properties:
-      Cluster: !ImportValue WorkerManagementECSCluster
-      DesiredCount: 2
+      Cluster:
+        Fn::ImportValue: !Sub ${EnvironmentName}:WorkerManagementECSCluster
+      DesiredCount: 1
       LaunchType: FARGATE
       LoadBalancers:
         - ContainerName: WorkerManagementAPI
@@ -56,43 +68,45 @@ Resources:
         AwsvpcConfiguration:
           AssignPublicIp: DISABLED
           Subnets:
-          - !ImportValue SubnetAZ1Private
-          - !ImportValue SubnetAZ2Private
+          - Fn::ImportValue: !Sub ${EnvironmentName}:SubnetAZ1Private
+          - Fn::ImportValue: !Sub ${EnvironmentName}:SubnetAZ2Private
           SecurityGroups:
-            - !Ref ContainerSecurityGroup
-      ServiceName: WorkerManagement
+            - Fn::ImportValue: !Sub ${EnvironmentName}:ContainerSecurityGroup
+      ServiceName: !Sub wm-srv-${EnvironmentName}
       TaskDefinition: !Ref WorkerManagementTaskDefinition
       DeploymentConfiguration:
-        MaximumPercent: 100
+        MaximumPercent: 200
         MinimumHealthyPercent: 50
 
   WebTargetGroup:
     Type: AWS::ElasticLoadBalancingV2::TargetGroup
     Properties:
-      VpcId: !ImportValue VPC
+      VpcId:
+        Fn::ImportValue: !Sub ${EnvironmentName}:VPC
       Port: 80
       Protocol: HTTP
       Matcher:
         HttpCode: 200-299
       TargetType: ip
       HealthCheckIntervalSeconds: 10
-      HealthCheckPath: /status
-      HealthCheckProtocol: HTTP
       HealthCheckTimeoutSeconds: 5
       HealthyThresholdCount: 2
+      HealthCheckPath: /workers/service_status
+      HealthCheckProtocol: HTTP
       TargetGroupAttributes:
       - Key: deregistration_delay.timeout_seconds
-        Value: 90
+        Value: "60"
 
   WebListenerRule:
     Type: AWS::ElasticLoadBalancingV2::ListenerRule
     Properties:
-      ListenerArn: !ImportValue LoadBalancerListener
-      Priority: 1
+      ListenerArn:
+        Fn::ImportValue: !Sub ${EnvironmentName}:LoadBalancerListener
+      Priority: 100
       Conditions:
         - Field: path-pattern
           Values:
-            - /*
+            - /worker*
       Actions:
         - TargetGroupArn: !Ref WebTargetGroup
           Type: forward
@@ -101,9 +115,7 @@ Outputs:
   WorkerManagementServiceStatusEndpoint:
     Description: Endpoint for service status
     Value: !Sub
-      - 'http://${LoadBalancerEndpoint}/status'
+      - 'http://${LoadBalancerEndpoint}/workers/service_status'
       -
-        LoadBalancerEndpoint: !ImportValue WorkerManagementDomainName
-  WorkerManagementServiceEndpoint:
-    Description: Endpoint for service
-    Value: !ImportValue WorkerManagementDomainName
+        LoadBalancerEndpoint:
+          Fn::ImportValue: !Sub ${EnvironmentName}:WorkerManagementDomainName

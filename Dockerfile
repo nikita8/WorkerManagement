@@ -1,32 +1,43 @@
-FROM golang:alpine AS golibsbuild
+FROM amazonlinux:2 AS gobuild
 
-RUN apk add git
+RUN yum install git -y
+RUN amazon-linux-extras install golang1.9
 
-# GOPATH is already set to /go
+ENV GOPATH=/go
 ENV WORKSPACE=$GOPATH/src/worker-management
-ENV GRANITIC_HOME=$GOPATH/src/github.com/graniticio/granitic
 
-RUN go get github.com/graniticio/granitic
 RUN go get github.com/aws/aws-sdk-go/aws
 RUN go get github.com/aws/aws-sdk-go/service/dynamodb
 RUN go get github.com/satori/go.uuid
 
+# get granitic dev version
+RUN git clone -b dev-1.3.0 --single-branch https://github.com/graniticio/granitic $GOPATH/src/github.com/graniticio/granitic
+RUN go install github.com/graniticio/granitic
+ENV GRANITIC_HOME=$GOPATH/src/github.com/graniticio/granitic
+
 # install the required packages
-RUN go install github.com/graniticio/granitic/cmd/grnc-bind
+RUN go get github.com/graniticio/granitic-yaml
+RUN go install github.com/graniticio/granitic-yaml/cmd/grnc-yaml-bind
+RUN go install github.com/graniticio/granitic-yaml/cmd/grnc-yaml-project
 RUN go install github.com/graniticio/granitic/cmd/grnc-ctl
-RUN go install github.com/graniticio/granitic/cmd/grnc-project
+
+ENV PATH=$PATH:$GOPATH/bin
 
 WORKDIR $WORKSPACE
 ADD . $WORKSPACE
 
-RUN grnc-bind && go build
+RUN grnc-yaml-bind && go build
 
-FROM alpine
+FROM amazonlinux:2
 
-RUN apk add --no-cache ca-certificates
+RUN mkdir -p /var/app
+
+WORKDIR /var/app
+
+COPY --from=gobuild /go/src/worker-management/ .
 
 EXPOSE 3000
 
-COPY --from=golibsbuild /go/src/worker-management/ .
+RUN ln -s /dev/stdout access.log
 
 CMD ./worker-management
